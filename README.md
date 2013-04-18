@@ -1,4 +1,8 @@
-api-platform-tools
-==================
+* Apigee API Platform Tools
 
-Tools for the Apigee API Platform
+This project contains tools for the Apigee Gateway Services platform. It is
+a Python project that contains tools to:
+
+* Deploy API proxies
+* Create skeleton proxies
+* Deploy node.js applications
