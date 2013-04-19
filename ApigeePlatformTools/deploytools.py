@@ -22,6 +22,8 @@ def parseEnvDeployments(resp, env):
 def parseAppDeployments(resp, name):
   ret = []
   deployments = json.load(resp)
+  if not 'environment' in deployments:
+    return ret
   for envDep in deployments['environment']:
     env = envDep['name']
     for revision in envDep['revision']:
@@ -47,6 +49,22 @@ def printDeployments(deployments):
     print 'Proxy: "%s" Revision %i' % (d['name'], d['revision'])
     print '  Environment: %s BasePath: %s' % (d['environment'], d['basePath'])
     print '  Status: %s' % (d['state'])
+    
+def getAndParseDeployments(org, name):
+  response = httptools.httpCall('GET', 
+      '/v1/o/%s/apis/%s/deployments' % (org, name))
+  return parseAppDeployments(response, name)  
+    
+def getAndPrintDeployments(org, name):
+  printDeployments(getAndParseDeployments(org, name))
+  
+def getAndParseEnvDeployments(org, env):
+  response = httptools.httpCall('GET', 
+      '/v1/o/%s/e/%s/deployments' % (org, env))
+  return parseEnvDeployments(response, env)   
+  
+def getAndPrintEnvDeployments(org, env):
+  printDeployments(getAndParseEnvDeployments(org, env))
     
 def importBundle(org, name, data):
   hdrs = { 'Content-Type' : 'application/octet-stream' }
@@ -92,5 +110,17 @@ def deployWithoutConflict(org, env, name, basePath, revision):
   if resp.status != 200 and resp.status != 201:
     print 'Deploy failed with status %i:\n%s' % (resp.status, resp.read())
     return False
+  return True
+  
+def undeploy(org, env, name, revision):
+  print 'Undeploying proxy %s revision %i' % (name, revision)
+  hdrs = { 'Content-Type': 'application/x-www-form-urlencoded' }
+  resp = httptools.httpCall('POST',
+    '/v1/organizations/%s/apis/%s/deployments' % (org, name),
+    hdrs,
+    'action=undeploy&env=%s&revision=%i' % (env, revision))
+  if resp.status != 200 and resp.status != 204:
+        print 'Error %i on undeployment:\n%s' % (resp.status, resp.read())
+        return False
   return True
 
