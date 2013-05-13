@@ -70,6 +70,7 @@ def importBundle(org, name, data):
   hdrs = { 'Content-Type' : 'application/octet-stream' }
   uri =  '/v1/organizations/%s/apis?action=import&name=%s' \
              % (org, name)
+  print 'Importing new application %s' % name
   resp = httptools.httpCall('POST', uri, hdrs, data)
 
   if resp.status != 200 and resp.status != 201:
@@ -100,6 +101,7 @@ def deployWithoutConflict(org, env, name, basePath, revision):
         return False
 
   # Deploy the bundle
+  print 'Deploying revision %i' % revision
   resp = httptools.httpCall('POST',
                  '/v1/organizations/%s/apis/%s/deployments' \
                   % (org, name),
@@ -110,6 +112,7 @@ def deployWithoutConflict(org, env, name, basePath, revision):
   if resp.status != 200 and resp.status != 201:
     print 'Deploy failed with status %i:\n%s' % (resp.status, resp.read())
     return False
+  print '  Deployed.'
   return True
   
 def undeploy(org, env, name, revision):

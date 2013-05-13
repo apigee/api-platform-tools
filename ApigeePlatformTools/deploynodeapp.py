@@ -50,22 +50,22 @@ def run():
   opts = getopt.getopt(sys.argv[2:], Options)[0]
   
   for o in opts:
-    if o[0] == '-n':
-      Name = o[1]
-    elif o[0] == '-m':
-      MainScript = o[1]
-    elif o[0] == '-o':
+    if o[0] == '-o':
       Organization = o[1]
-    elif o[0] == '-d':
-      Directory =o[1]
     elif o[0] == '-e':
       Environment =o[1]
-    elif o[0] == '-b':
-      BasePath = o[1]
+    elif o[0] == '-n':
+      Name = o[1]
+    elif o[0] == '-d':
+      Directory =o[1]
+    elif o[0] == '-m':
+      MainScript = o[1]
     elif o[0] == '-u':
       Username = o[1]
     elif o[0] == '-p':
       Password = o[1]
+    elif o[0] == '-b':
+      BasePath = o[1]
     elif o[0] == '-l':
       ApigeeURL = o[1]
     elif o[0] == '-z':
@@ -76,9 +76,30 @@ def run():
       printUsage()
       sys.exit(1)
   
-  if Username == None or Password == None or Directory == None or \
-     Environment == None or Name == None or Organization == None or \
-     MainScript == None:
+  BadUsage = False
+  if Username == None:
+    BadUsage = True
+    print '-u is required'    
+  if Password == None:
+    BadUsage = True
+    print '-p is required'
+  if Directory == None:
+    BadUsage = True
+    print '-d is required'
+  if Environment == None:
+    BadUsage = True
+    print '-e is required'
+  if Name == None:
+    BadUsage = True
+    print '-n is required'
+  if Organization == None:
+    BadUsage = True
+    print '-o is required'
+  if MainScript == None:
+    BadUsage = True
+    print '-m is required'
+    
+  if BadUsage:  
     printUsage()
     sys.exit(1)
   
@@ -163,7 +184,7 @@ def run():
   print 'Imported new app revision %i' % revision
   
   if ShouldDeploy:
-    status = deploytools.deployWithoutConflict(Organization, Environment, Name, BasePath, revision)
+    status = deploytools.deployWithoutConflict(Organization, Environment, Name, '/', revision)
     if status == False:
       sys.exit(2)
   
