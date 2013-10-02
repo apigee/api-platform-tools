@@ -6,5 +6,5 @@ setup(
     packages=['ApigeePlatformTools'],
     scripts=['bin/apigeetool'],
     license='Apache 2.0',
-    long_description=open('README').read()
+    long_description=open('README.md').read()
 )
