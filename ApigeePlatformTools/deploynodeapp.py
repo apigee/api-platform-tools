@@ -190,6 +190,6 @@ def run():
   
   response = httptools.httpCall('GET', 
       '/v1/o/%s/apis/%s/deployments' % (Organization, Name))
-  deps = deploytools.parseAppDeployments(response, Name)
+  deps = deploytools.parseAppDeployments(Organization, response, Name)
   deploytools.printDeployments(deps)
 
