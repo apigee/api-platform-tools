@@ -123,32 +123,16 @@ def importBundle(org, name, data):
   return revision
     
 def deployWithoutConflict(org, env, name, basePath, revision):
-  response = httptools.httpCall('GET', 
-    '/v1/o/%s/apis/%s/deployments' % (org, name))
-  
-  hdrs = { 'Content-Type': 'application/x-www-form-urlencoded' }
-  deps = parseAppDeployments(org, response, name)
-  for d in deps:
-    if d['environment'] == env and \
-      d['basePath'] == basePath and \
-      d['revision'] != revision:
-      print 'Undeploying revision %i in same environment and path:' % d['revision']
-      resp = httptools.httpCall('POST', 
-                     '/v1/organizations/%s/apis/%s/deployments' % (org, name),
-                     hdrs, 
-                     'action=undeploy&env=%s&revision=%i' % (env, d['revision']))
-      if resp.status != 200 and resp.status != 204:
-        print 'Error %i on undeployment:\n%s' % (resp.status, resp.read())
-        return False
-
-  # Deploy the bundle
+  # Deploy the bundle using: seamless_deployments
   print 'Deploying revision %i' % revision
+  hdrs = {
+      'Accept': 'application/json',
+      'Content-type': 'application/x-www-form-urlencoded'
+  }
   resp = httptools.httpCall('POST',
-                 '/v1/organizations/%s/apis/%s/deployments' \
-                  % (org, name),
-                  hdrs,
-                  'action=deploy&env=%s&revision=%s&basepath=%s' \
-                  % (env, revision, basePath))
+           ('/v1/o/%s/environments/%s/apis/%s/revisions/%s/deployments' +
+              '?override=true') % \
+              (org, env, name, revision), hdrs)
 
   if resp.status != 200 and resp.status != 201:
     print 'Deploy failed with status %i:\n%s' % (resp.status, resp.read())
