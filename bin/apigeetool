@@ -28,5 +28,5 @@ elif cmd == 'undeploy':
   undeploy.run()
 else:
   printUsage()
-  sys.exit(2)
+  sys.exit(0)
 
