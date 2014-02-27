@@ -74,7 +74,7 @@ def run():
       ShouldDeploy = False
     elif o[0] == '-h':
       printUsage()
-      sys.exit(1)
+      sys.exit(0)
   
   BadUsage = False
   if Username == None:

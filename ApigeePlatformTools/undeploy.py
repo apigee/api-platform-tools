@@ -52,7 +52,7 @@ def run():
       ApigeeURL = o[1]
     elif o[0] == '-h':
       printUsage()
-      sys.exit(1)
+      sys.exit(0)
       
     
   if Username == None or Password == None or Organization == None or Name == None:
