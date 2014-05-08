@@ -13,7 +13,9 @@ def getBaseUrl(org, env, name, basePath, revision):
     
   response = httptools.httpCall('GET',
       '/v1/o/%s/apis/%s/revisions/%i/proxies/%s' % (org, name, revision, proxies[0]))
+
   proxy = json.load(response)
+
   if len(proxy['connection']['virtualHost']) < 1:
     # No virtual hosts
     return '(unknown)'
@@ -28,7 +30,12 @@ def getBaseUrl(org, env, name, basePath, revision):
   else:
     alias = vh['hostAliases'][0]
   
-  ret = 'http://%s:%s/' % (alias, vh['port'])
+  if vhName == 'secure' :
+    httpScheme = 'https'
+  else:
+    httpScheme = 'http'
+  
+  ret = httpScheme + '://%s:%s/' % (alias, vh['port'])
   if len(basePath) > 0:
     ret = urlparse.urljoin(ret, basePath)
   proxyBasePath = proxy['connection']['basePath']

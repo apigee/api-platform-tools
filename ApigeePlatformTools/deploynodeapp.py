@@ -30,6 +30,7 @@ def printUsage():
   print '-l Apigee API URL (optional, defaults to https://api.enterprise.apigee.com)'
   print '-z ZIP file to save (optional for debugging)'
   print '-i import only, do not deploy'
+  print '-x set VirtualHost. Default value is default = http. Set to secure for https'
   print '-h Print this message'
   
 def run():    
@@ -44,8 +45,8 @@ def run():
   BasePath = '/'
   ShouldDeploy = True
   ZipFile = None
-    
-  Options = 'o:e:n:d:m:u:p:b:l:z:ih'
+  VirtualHost = 'default'
+  Options = 'o:e:x:n:d:m:u:p:b:l:z:ih'
   
   opts = getopt.getopt(sys.argv[2:], Options)[0]
   
@@ -70,6 +71,8 @@ def run():
       ApigeeURL = o[1]
     elif o[0] == '-z':
       ZipFile = o[1]
+    elif o[0] == '-x':
+      VirtualHost = o[1]
     elif o[0] == '-i':
       ShouldDeploy = False
     elif o[0] == '-h':
@@ -112,12 +115,12 @@ def run():
     return '<ProxyEndpoint name="default">\
       <HTTPProxyConnection>\
       <BasePath>%s</BasePath>\
-      <VirtualHost>default</VirtualHost>\
+      <VirtualHost>%s</VirtualHost>\
       </HTTPProxyConnection>\
       <RouteRule name="default">\
       <TargetEndpoint>default</TargetEndpoint>\
       </RouteRule>\
-      </ProxyEndpoint>' % BasePath
+      </ProxyEndpoint>' % (BasePath, VirtualHost)
       
   def makeTarget():
     return '<TargetEndpoint name="default">\
