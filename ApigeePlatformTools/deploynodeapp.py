@@ -30,8 +30,11 @@ def printUsage():
   print '-l Apigee API URL (optional, defaults to https://api.enterprise.apigee.com)'
   print '-z ZIP file to save (optional for debugging)'
   print '-i import only, do not deploy'
-  print '-x set VirtualHost. Default value is default = http. Set to secure for https'
+  print '-x Virtual Host name (optional, defaults to "default")'
   print '-h Print this message'
+  print ''
+  print 'Typically, the "default" virtual host listens on HTTP.'
+  print 'For an HTTPS-only app, use "-x secure".'
   
 def run():    
   ApigeeURL = 'https://api.enterprise.apigee.com'
