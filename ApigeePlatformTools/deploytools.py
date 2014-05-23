@@ -136,8 +136,8 @@ def deployWithoutConflict(org, env, name, basePath, revision):
   }
   resp = httptools.httpCall('POST',
            ('/v1/o/%s/environments/%s/apis/%s/revisions/%s/deployments' +
-              '?override=true') % \
-              (org, env, name, revision), hdrs)
+              '?override=true&basepath=%s') % \
+              (org, env, name, revision, basePath), hdrs)
 
   if resp.status != 200 and resp.status != 201:
     print 'Deploy failed with status %i:\n%s' % (resp.status, resp.read())
