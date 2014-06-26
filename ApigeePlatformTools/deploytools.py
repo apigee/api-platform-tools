@@ -10,7 +10,7 @@ def getBaseUrl(org, env, name, basePath, revision):
   if len(proxies) < 1:
     # No proxies
     return '(unknown)'
-    
+
   response = httptools.httpCall('GET',
       '/v1/o/%s/apis/%s/revisions/%i/proxies/%s' % (org, name, revision, proxies[0]))
   proxy = json.load(response)
@@ -18,7 +18,7 @@ def getBaseUrl(org, env, name, basePath, revision):
     # No virtual hosts
     return '(unknown)'
   vhName = proxy['connection']['virtualHost'][0]
-  
+
   response = httptools.httpCall('GET',
       '/v1/o/%s/e/%s/virtualhosts/%s' % (org, env, vhName))
   vh = json.load(response)
@@ -27,12 +27,12 @@ def getBaseUrl(org, env, name, basePath, revision):
     alias = ''
   else:
     alias = vh['hostAliases'][0]
-  
+
   if vhName == 'secure' :
     httpScheme = 'https'
   else:
     httpScheme = 'http'
-  
+
   ret = httpScheme + '://%s:%s/' % (alias, vh['port'])
   if len(basePath) > 0:
     ret = urlparse.urljoin(ret, basePath)
@@ -49,17 +49,17 @@ def parseEnvDeployments(org, resp, env):
     for revision in proxyDep['revision']:
       revNum = int(revision['name'])
       basePath = revision['configuration']['basePath']
-      ri = { 
-        'name': name, 
+      ri = {
+        'name': name,
         'basePath': basePath,
         'state': revision['state'],
         'revision': revNum,
         'environment': env,
         'baseUrl': getBaseUrl(org, env, name, basePath, revNum)
-      }      
+      }
       ret.append(ri)
   return ret
-  
+
 
 def parseAppDeployments(org, resp, name):
   ret = []
@@ -71,23 +71,23 @@ def parseAppDeployments(org, resp, name):
     for revision in envDep['revision']:
       revNum = int(revision['name'])
       basePath = revision['configuration']['basePath']
-      ri = { 
-        'name': name, 
+      ri = {
+        'name': name,
         'basePath': basePath,
         'state': revision['state'],
         'revision': revNum,
         'environment': env,
         'baseUrl': getBaseUrl(org, env, name, basePath, revNum)
-      }      
+      }
       ret.append(ri)
   return ret
-  
+
 def cmpDeployment(d1, d2):
   c = cmp(d1['name'], d2['name'])
   if (c == 0):
     return d1['revision'] - d2['revision']
   return c
-  
+
 def printDeployments(deployments):
   deployments.sort(cmpDeployment)
   for d in deployments:
@@ -95,29 +95,40 @@ def printDeployments(deployments):
     print '  Environment: %s BasePath: %s' % (d['environment'], d['basePath'])
     print '  Status: %s' % (d['state'])
     print '  Base URL: %s' % (d['baseUrl'])
-    
+
 def getAndParseDeployments(org, name):
-  response = httptools.httpCall('GET', 
+  response = httptools.httpCall('GET',
       '/v1/o/%s/apis/%s/deployments' % (org, name))
-  return parseAppDeployments(org, response, name)  
-    
+  return parseAppDeployments(org, response, name)
+
 def getAndPrintDeployments(org, name):
   printDeployments(getAndParseDeployments(org, name))
-  
+
 def getAndParseEnvDeployments(org, env):
-  response = httptools.httpCall('GET', 
+  response = httptools.httpCall('GET',
       '/v1/o/%s/e/%s/deployments' % (org, env))
-  return parseEnvDeployments(org, response, env)   
-  
+  return parseEnvDeployments(org, response, env)
+
 def getAndPrintEnvDeployments(org, env):
   printDeployments(getAndParseEnvDeployments(org, env))
-    
+
 def importBundle(org, name, data):
   hdrs = { 'Content-Type' : 'application/octet-stream' }
   uri =  '/v1/organizations/%s/apis?action=import&name=%s' \
              % (org, name)
   print 'Importing new application %s' % name
-  resp = httptools.httpCall('POST', uri, hdrs, data)
+
+  resp = None
+  try:
+     resp = httptools.httpCall('POST', uri, hdrs, data)
+  except Exception, e:
+    print traceback.format_exc()
+
+    if e.errno == 32:
+      print '%s uploading API Bundle!  Check that the zipped file size is not >10MB' % e
+    else:
+      print e
+    return -1
 
   if resp.status != 200 and resp.status != 201:
     print 'Import failed to %s with status %i:\n%s' % (uri, resp.status, resp.read())
@@ -126,7 +137,7 @@ def importBundle(org, name, data):
   deployment = json.load(resp)
   revision = int(deployment['revision'])
   return revision
-    
+
 def deployWithoutConflict(org, env, name, basePath, revision):
   # Deploy the bundle using: seamless_deployments
   print 'Deploying revision %i' % revision
@@ -144,7 +155,7 @@ def deployWithoutConflict(org, env, name, basePath, revision):
     return False
   print '  Deployed.'
   return True
-  
+
 def undeploy(org, env, name, revision):
   print 'Undeploying proxy %s revision %i' % (name, revision)
   hdrs = { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -156,4 +167,3 @@ def undeploy(org, env, name, revision):
         print 'Error %i on undeployment:\n%s' % (resp.status, resp.read())
         return False
   return True
-
