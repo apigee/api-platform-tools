@@ -139,7 +139,7 @@ def getAndPrintEnvDeployments(org, env) :
 
 
 def importBundle(org, name, data) :
-  hdrs = {'Content-Type' : 'application/octet-stream'}
+  hdrs = { 'Content-Type' : 'application/octet-stream' }
   uri = '/v1/organizations/%s/apis?action=import&name=%s' \
         % (org, name)
   print 'Importing new application %s' % name
@@ -200,7 +200,7 @@ def deployWithoutConflict(org, env, name, basePath, revision) :
 
 def undeploy(org, env, name, revision) :
   print 'Undeploying proxy %s revision %i' % (name, revision)
-  hdrs = {'Content-Type' : 'application/x-www-form-urlencoded'}
+  hdrs = { 'Content-Type' : 'application/x-www-form-urlencoded' }
   resp = httptools.httpCall('POST',
     '/v1/organizations/%s/apis/%s/deployments' % (org, name),
     hdrs,
