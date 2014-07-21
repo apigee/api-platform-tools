@@ -1,18 +1,36 @@
 import json
+import traceback
 import urlparse
 
 from ApigeePlatformTools import httptools
 
+IOError_messages = {
+  32: 'Check that the zipped file size is not >10MB and verify that your Apigee credentials are correct.',
+  8: 'Check the specified value for "apigee_url"',
+  61: 'Connection refused. Check the specified value for "apigee_url"'
+}
+
+HTTP_messages = {
+  400: '400 Bad Request.  The syntax of the command is incorrect',
+  401: '401 Unauthorized.  Verify your Apigee Credentials are correct',
+  403: '403 Forbidden.  Verify that the specified Organization name is correct and that you have appropriate permissions',
+  404: '404 Not Found.  Verify the Organization name is correct',
+  407: '407 Proxy Authentication Required.  Verify your network configuration is correct if using an HTTP Proxy',
+  500: '500 Internal Server Error.  Something went wrong processing your bundle',
+  503: '503 Service Unavailable.  Please try your request again after a few minutes'
+}
+
+
 def getBaseUrl(org, env, name, basePath, revision):
   response = httptools.httpCall('GET',
-      '/v1/o/%s/apis/%s/revisions/%i/proxies' % (org, name, revision))
+    '/v1/o/%s/apis/%s/revisions/%i/proxies' % (org, name, revision))
   proxies = json.load(response)
   if len(proxies) < 1:
     # No proxies
     return '(unknown)'
 
   response = httptools.httpCall('GET',
-      '/v1/o/%s/apis/%s/revisions/%i/proxies/%s' % (org, name, revision, proxies[0]))
+    '/v1/o/%s/apis/%s/revisions/%i/proxies/%s' % (org, name, revision, proxies[0]))
   proxy = json.load(response)
   if len(proxy['connection']['virtualHost']) < 1:
     # No virtual hosts
@@ -20,7 +38,7 @@ def getBaseUrl(org, env, name, basePath, revision):
   vhName = proxy['connection']['virtualHost'][0]
 
   response = httptools.httpCall('GET',
-      '/v1/o/%s/e/%s/virtualhosts/%s' % (org, env, vhName))
+    '/v1/o/%s/e/%s/virtualhosts/%s' % (org, env, vhName))
   vh = json.load(response)
   if len(vh['hostAliases']) < 1:
     # No aliases
@@ -28,7 +46,7 @@ def getBaseUrl(org, env, name, basePath, revision):
   else:
     alias = vh['hostAliases'][0]
 
-  if vhName == 'secure' :
+  if vhName == 'secure':
     httpScheme = 'https'
   else:
     httpScheme = 'http'
@@ -40,6 +58,7 @@ def getBaseUrl(org, env, name, basePath, revision):
   if len(proxyBasePath) > 0:
     ret = urlparse.urljoin(ret, proxyBasePath)
   return ret
+
 
 def parseEnvDeployments(org, resp, env):
   ret = []
@@ -82,11 +101,13 @@ def parseAppDeployments(org, resp, name):
       ret.append(ri)
   return ret
 
+
 def cmpDeployment(d1, d2):
   c = cmp(d1['name'], d2['name'])
   if (c == 0):
     return d1['revision'] - d2['revision']
   return c
+
 
 def printDeployments(deployments):
   deployments.sort(cmpDeployment)
@@ -96,65 +117,86 @@ def printDeployments(deployments):
     print '  Status: %s' % (d['state'])
     print '  Base URL: %s' % (d['baseUrl'])
 
+
 def getAndParseDeployments(org, name):
   response = httptools.httpCall('GET',
-      '/v1/o/%s/apis/%s/deployments' % (org, name))
+    '/v1/o/%s/apis/%s/deployments' % (org, name))
   return parseAppDeployments(org, response, name)
+
 
 def getAndPrintDeployments(org, name):
   printDeployments(getAndParseDeployments(org, name))
 
+
 def getAndParseEnvDeployments(org, env):
   response = httptools.httpCall('GET',
-      '/v1/o/%s/e/%s/deployments' % (org, env))
+    '/v1/o/%s/e/%s/deployments' % (org, env))
   return parseEnvDeployments(org, response, env)
+
 
 def getAndPrintEnvDeployments(org, env):
   printDeployments(getAndParseEnvDeployments(org, env))
 
+
 def importBundle(org, name, data):
-  hdrs = { 'Content-Type' : 'application/octet-stream' }
-  uri =  '/v1/organizations/%s/apis?action=import&name=%s' \
-             % (org, name)
+  hdrs = { 'Content-Type': 'application/octet-stream' }
+  uri = '/v1/organizations/%s/apis?action=import&name=%s' \
+        % (org, name)
   print 'Importing new application %s' % name
 
   resp = None
+
   try:
-     resp = httptools.httpCall('POST', uri, hdrs, data)
-  except Exception, e:
+    resp = httptools.httpCall('POST', uri, hdrs, data)
+
+  except IOError, e:
     print traceback.format_exc()
 
-    if e.errno == 32:
-      print '%s uploading API Bundle!  Check that the zipped file size is not >10MB' % e
-    else:
-      print e
+    err_message = IOError_messages.get(e.errno)
+
+    if err_message:
+      print '%s uploading API Bundle!\nHINT: %s' % (e, err_message)
+
+    return -1
+
+  except Exception, e:
+    print traceback.format_exc()
+    print e
+
     return -1
 
   if resp.status != 200 and resp.status != 201:
-    print 'Import failed to %s with status %i:\n%s' % (uri, resp.status, resp.read())
+    message = HTTP_messages.get(resp.status)
+
+    if not message:
+      message = resp.read()
+
+    print 'Import failed to %s with status %i:\nHINT: %s' % (uri, resp.status, message)
     return -1
 
   deployment = json.load(resp)
   revision = int(deployment['revision'])
   return revision
 
+
 def deployWithoutConflict(org, env, name, basePath, revision):
   # Deploy the bundle using: seamless_deployments
   print 'Deploying revision %i' % revision
   hdrs = {
-      'Accept': 'application/json',
-      'Content-type': 'application/x-www-form-urlencoded'
+    'Accept': 'application/json',
+    'Content-type': 'application/x-www-form-urlencoded'
   }
   resp = httptools.httpCall('POST',
-           ('/v1/o/%s/environments/%s/apis/%s/revisions/%s/deployments' +
-              '?override=true&basepath=%s') % \
-              (org, env, name, revision, basePath), hdrs)
+    ('/v1/o/%s/environments/%s/apis/%s/revisions/%s/deployments' +
+     '?override=true') % \
+    (org, env, name, revision), hdrs)
 
   if resp.status != 200 and resp.status != 201:
     print 'Deploy failed with status %i:\n%s' % (resp.status, resp.read())
     return False
   print '  Deployed.'
   return True
+
 
 def undeploy(org, env, name, revision):
   print 'Undeploying proxy %s revision %i' % (name, revision)
@@ -164,6 +206,7 @@ def undeploy(org, env, name, revision):
     hdrs,
     'action=undeploy&env=%s&revision=%i' % (env, revision))
   if resp.status != 200 and resp.status != 204:
-        print 'Error %i on undeployment:\n%s' % (resp.status, resp.read())
-        return False
+    print 'Error %i on undeployment:\n%s' % (resp.status, resp.read())
+    return False
   return True
+
