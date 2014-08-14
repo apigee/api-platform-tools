@@ -1,5 +1,6 @@
 import getopt
 import sys
+import getpass
 
 from ApigeePlatformTools import httptools, deploytools
 
@@ -14,7 +15,7 @@ def printUsage():
   print '-e Apigee environment name (optional, see below)'
   print '-r Revision to undeploy (optional, see below)'
   print '-u Apigee user name'
-  print '-p Apigee password'
+  print '-p Apigee password (optional, will prompt if not supplied)'
   print '-l Apigee API URL (optional, defaults to https://api.enterprise.apigee.com)'
   print '-h Print this message'
   print ''
@@ -23,7 +24,7 @@ def printUsage():
   print 'To undeploy all revisions in a specific environment, use -n and -e'
   print 'Use all three to undeploy a specific revision in a specific environment'
 
-def run():  
+def run():
   ApigeeURL = 'https://api.enterprise.apigee.com'
   Username = None
   Password = None
@@ -32,9 +33,9 @@ def run():
   Name = None
   Revision = None
   Options = 'o:n:r:e:u:p:l:h'
-  
+
   opts = getopt.getopt(sys.argv[2:], Options)[0]
-  
+
   for o in opts:
     if o[0] == '-n':
       Name = o[1]
@@ -53,15 +54,17 @@ def run():
     elif o[0] == '-h':
       printUsage()
       sys.exit(0)
-      
-    
-  if Username == None or Password == None or Organization == None or Name == None:
+
+  if not Password:
+    Password = getpass.getpass()
+
+  if not Username or not Password or not Organization or not Name:
     printUsage();
     sys.exit(1)
-  
-  
+
+
   httptools.setup(ApigeeURL, Username, Password)
-      
+
   if ((Environment == None) and (Revision == None)):
     deployments = deploytools.getAndParseDeployments(Organization, Name)
     for dep in deployments:
@@ -76,7 +79,7 @@ def run():
         deploytools.undeploy(Organization, dep['environment'],
                              Name, dep['revision'])
     deploytools.getAndPrintDeployments(Organization, Name)
-  
+
   else:
     deployments = deploytools.getAndParseEnvDeployments(Organization, Environment)
     for dep in deployments:

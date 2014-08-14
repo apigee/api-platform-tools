@@ -10,6 +10,7 @@ import StringIO
 import urlparse
 import xml.dom.minidom
 import zipfile
+import getpass
 
 from ApigeePlatformTools import httptools, deploytools
 
@@ -25,7 +26,7 @@ def printUsage():
   print '-d Apigee proxy directory'
   print '-m Main script name: Should be at the top level of the directory'
   print '-u Apigee user name'
-  print '-p Apigee password'
+  print '-p Apigee password (optional, will prompt if not supplied)'
   print '-b Base path (optional, defaults to /)'
   print '-l Apigee API URL (optional, defaults to https://api.enterprise.apigee.com)'
   print '-z ZIP file to save (optional for debugging)'
@@ -35,8 +36,8 @@ def printUsage():
   print ''
   print 'Typically, the "default" virtual host listens on HTTP.'
   print 'For an HTTPS-only app, use "-x secure".'
-  
-def run():    
+
+def run():
   ApigeeURL = 'https://api.enterprise.apigee.com'
   Username = None
   Password = None
@@ -50,9 +51,9 @@ def run():
   ZipFile = None
   VirtualHost = 'default'
   Options = 'o:e:x:n:d:m:u:p:b:l:z:ih'
-  
+
   opts = getopt.getopt(sys.argv[2:], Options)[0]
-  
+
   for o in opts:
     if o[0] == '-o':
       Organization = o[1]
@@ -81,39 +82,42 @@ def run():
     elif o[0] == '-h':
       printUsage()
       sys.exit(0)
-  
+
   BadUsage = False
-  if Username == None:
+  if not Username:
     BadUsage = True
-    print '-u is required'    
-  if Password == None:
-    BadUsage = True
-    print '-p is required'
-  if Directory == None:
+    print '-u is required'
+  if not Directory:
     BadUsage = True
     print '-d is required'
-  if Environment == None:
+  if not Environment:
     BadUsage = True
     print '-e is required'
-  if Name == None:
+  if not Name:
     BadUsage = True
     print '-n is required'
-  if Organization == None:
+  if not Organization:
     BadUsage = True
     print '-o is required'
-  if MainScript == None:
+  if not MainScript:
     BadUsage = True
     print '-m is required'
-    
-  if BadUsage:  
+
+  if not BadUsage and not Password:
+    Password = getpass.getpass()
+  if not BadUsage and not Password:
+    BadUsage = True
+    print 'Password is required'
+
+  if BadUsage:
     printUsage()
     sys.exit(1)
-  
+
   httptools.setup(ApigeeURL, Username, Password)
-  
+
   def makeApplication():
     return '<APIProxy name="%s"/>' % Name
-    
+
   def makeProxy():
     return '<ProxyEndpoint name="default">\
       <HTTPProxyConnection>\
@@ -124,14 +128,14 @@ def run():
       <TargetEndpoint>default</TargetEndpoint>\
       </RouteRule>\
       </ProxyEndpoint>' % (BasePath, VirtualHost)
-      
+
   def makeTarget():
     return '<TargetEndpoint name="default">\
       <ScriptTarget>\
       <ResourceURL>node://%s</ResourceURL>\
       </ScriptTarget>\
       </TargetEndpoint>' % MainScript
-  
+
   # Return TRUE if any component of the file path contains a directory name that
   # starts with a "." like '.svn', but not '.' or '..'
   def pathContainsDot(p):
@@ -140,10 +144,10 @@ def run():
       if c.match(pc) != None:
         return True
     return False
-  
+
   # ZIP a whole directory into a stream and return the result so that it
   # can be nested into the top-level ZIP
-  
+
   def zipDirectory(dir, pfx):
     ret = StringIO.StringIO()
     tzip = zipfile.ZipFile(ret, 'w')
@@ -157,15 +161,15 @@ def run():
             tzip.write(fn, en)
     tzip.close()
     return ret.getvalue()
-  
+
   # Construct a ZIPped copy of the bundle in memory
   tf = StringIO.StringIO()
   zipout = zipfile.ZipFile(tf, 'w')
-  
+
   zipout.writestr('apiproxy/%s.xml' % Name, makeApplication())
   zipout.writestr('apiproxy/proxies/default.xml', makeProxy())
   zipout.writestr('apiproxy/targets/default.xml', makeTarget())
-  
+
   for topName in os.listdir(Directory):
     if not pathContainsDot(topName):
       fn = os.path.join(Directory, topName)
@@ -177,24 +181,24 @@ def run():
         en = 'apiproxy/resources/node/%s' % topName
         zipout.write(fn, en)
   zipout.close()
-  
+
   if (ZipFile != None):
     tzf = open(ZipFile, 'w')
     tzf.write(tf.getvalue())
     tzf.close()
-  
+
   revision = deploytools.importBundle(Organization, Name, tf.getvalue())
   if (revision < 0):
     sys.exit(2)
-  
+
   print 'Imported new app revision %i' % revision
-  
+
   if ShouldDeploy:
     status = deploytools.deployWithoutConflict(Organization, Environment, Name, '/', revision)
     if status == False:
       sys.exit(2)
-  
-  response = httptools.httpCall('GET', 
+
+  response = httptools.httpCall('GET',
       '/v1/o/%s/apis/%s/deployments' % (Organization, Name))
   deps = deploytools.parseAppDeployments(Organization, response, Name)
   deploytools.printDeployments(deps)
