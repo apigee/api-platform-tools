@@ -1,3 +1,8 @@
+### This python-based `apigeetool` is no longer maintained, and has been superseded by an `npm`-based tool:
+
+Download it here: https://www.npmjs.com/package/apigeetool
+
+
 # Apigee API Platform Tools
 
 This project contains tools for the Apigee Gateway Services platform. It is
